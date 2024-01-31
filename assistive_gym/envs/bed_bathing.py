@@ -29,8 +29,11 @@ class BedBathingEnv(AssistiveEnv):
         if self.gui and self.tool_force_on_human > 0:
             print('Task success:', self.task_success, 'Force at tool on human:', self.tool_force_on_human, reward_new_contact_points)
 
-        info = {'total_force_on_human': self.total_force_on_human, 'task_success': int(self.task_success >= (self.total_target_count*self.config('task_success_threshold'))), 'action_robot_len': self.action_robot_len, 'action_human_len': self.action_human_len, 'obs_robot_len': self.obs_robot_len, 'obs_human_len': self.obs_human_len}
+        success = int(self.task_success >= (self.total_target_count*self.config('task_success_threshold')))
+        info = {'total_force_on_human': self.total_force_on_human, 'task_success': success, 'action_robot_len': self.action_robot_len, 'action_human_len': self.action_human_len, 'obs_robot_len': self.obs_robot_len, 'obs_human_len': self.obs_human_len}
         done = self.iteration >= 200
+        if self.config_bool("stop_on_success"):
+            done = success or done
 
         if not self.human.controllable:
             truncated = (False, ) if self.gym_api_new_step else ()

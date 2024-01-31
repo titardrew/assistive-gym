@@ -78,7 +78,13 @@ class AssistiveEnv(gym.Env):
         self.furniture = Furniture()
 
         self.configp = configparser.ConfigParser()
-        self.configp.read(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'config.ini'))
+
+        default_config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'config.ini')
+        config_path = os.environ.get("ASSISTIVE_CONFIG", default_config_path)
+        if os.environ.get("ASSISTIVE_CONFIG"):
+            print(f"Reading config from $ASSISTIVE_CONFIG = {config_path}")
+        self.configp.read(config_path)
+
         # Human preference weights
         self.C_v = self.config('velocity_weight', 'human_preferences')
         self.C_f = self.config('force_nontarget_weight', 'human_preferences')
@@ -98,6 +104,9 @@ class AssistiveEnv(gym.Env):
 
     def config(self, tag, section=None):
         return float(self.configp[self.task if section is None else section][tag])
+
+    def config_bool(self, tag, section=None):
+        return bool(self.configp[self.task if section is None else section][tag])
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
