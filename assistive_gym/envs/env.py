@@ -96,17 +96,23 @@ class AssistiveEnv(gym.Env):
 
         self.gym_api_new_reset, self.gym_api_new_step = get_gym_api_spec()
 
+        self.render_camera_eye = [self.config('camera_eye_x'), self.config('camera_eye_y'), self.config('camera_eye_z')]
+        self.render_camera_target = [self.config('camera_target_x'), self.config('camera_target_y'), self.config('camera_target_z')]
+        self.render_camera_fov = self.config('camera_fov', cast_type=int)
+        self.render_camera_width = self.config('camera_width', cast_type=int)
+        self.render_camera_height = self.config('camera_height', cast_type=int)
+
     def step(self, action):
         raise NotImplementedError('Implement observations')
 
     def _get_obs(self, agent=None):
         raise NotImplementedError('Implement observations')
 
-    def config(self, tag, section=None):
-        return float(self.configp[self.task if section is None else section][tag])
+    def config(self, tag, section=None, cast_type=float):
+        return cast_type(self.configp[self.task if section is None else section][tag])
 
     def config_bool(self, tag, section=None):
-        return bool(self.configp[self.task if section is None else section][tag])
+        return self.config(tag, section=section, cast_type=bool)
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -374,7 +380,14 @@ class AssistiveEnv(gym.Env):
                 self.util = Util(self.id, self.np_random)
         else:  # rgb_array
             if not hasattr(self, "_camera_auto_setup"):
-                self.setup_camera(camera_eye=[0.5, -0.75, 1.5], camera_target=[-0.2, 0, 0.75], fov=60, camera_width=1920//4, camera_height=1080//4)
+                print(self.render_camera_eye)
+                self.setup_camera(
+                    camera_eye=self.render_camera_eye,
+                    camera_target=self.render_camera_target,
+                    fov=self.render_camera_fov,
+                    camera_width=self.render_camera_width,
+                    camera_height=self.render_camera_height
+                )
                 self._camera_auto_setup = True
             img, depth = self.get_camera_image_depth()
             rgb_array = img[..., :3]
