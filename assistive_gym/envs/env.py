@@ -380,7 +380,6 @@ class AssistiveEnv(gym.Env):
                 self.util = Util(self.id, self.np_random)
         else:  # rgb_array
             if not hasattr(self, "_camera_auto_setup"):
-                print(self.render_camera_eye)
                 self.setup_camera(
                     camera_eye=self.render_camera_eye,
                     camera_target=self.render_camera_target,
