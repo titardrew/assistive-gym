@@ -33,7 +33,7 @@ class BedBathingEnv(AssistiveEnv):
         info = {'total_force_on_human': self.total_force_on_human, 'task_success': success, 'action_robot_len': self.action_robot_len, 'action_human_len': self.action_human_len, 'obs_robot_len': self.obs_robot_len, 'obs_human_len': self.obs_human_len}
         done = self.iteration >= 200
         if self.config_bool("stop_on_success"):
-            done = success or done
+            done = bool(success) or done
 
         if not self.human.controllable:
             truncated = (False, ) if self.gym_api_new_step else ()

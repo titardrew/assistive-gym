@@ -4,6 +4,7 @@ try:
 except ImportError:
     import gym
 import numpy as np
+import tqdm
 # from ray.rllib.agents.ppo import PPOTrainer, DEFAULT_CONFIG
 from ray.rllib.algorithms import ppo, sac
 from ray.rllib.utils import check_env
@@ -43,6 +44,15 @@ def setup_config(env, algo, coop=False, seed=0, extra_configs={}):
     return {**config, **extra_configs}
 
 def load_policy(env, algo, env_name, policy_path=None, coop=False, seed=0, extra_configs={}):
+    from ray.rllib.algorithms import Algorithm
+    from pathlib import Path
+    print(Path(policy_path)/algo/env_name)
+    policy_dir = Path(policy_path)/algo/env_name
+    checkpoint_dirs = list(policy_dir.glob("checkpoint*"))
+    if len(checkpoint_dirs):
+        checkpoint_dir = checkpoint_dirs[0]
+        agent = Algorithm.from_checkpoint(str(checkpoint_dir))
+        return agent, None
     if algo == 'ppo':
         agent = ppo.PPO(setup_config(env, algo, coop, seed, extra_configs), 'assistive_gym:'+env_name)
     elif algo == 'sac':
@@ -153,25 +163,27 @@ def evaluate_policy(env_name, algo, policy_path, n_episodes=100, coop=False, see
     rewards = []
     forces = []
     task_successes = []
-    for episode in range(n_episodes):
-        obs, _ = env.reset()
+    for episode in tqdm.tqdm(range(n_episodes)):
+        obs = env.reset()
         done = False
         reward_total = 0.0
         force_list = []
         task_success = 0.0
+        i_step = 0
         while not done:
+            i_step += 1
             if coop:
                 # Compute the next action for the robot/human using the trained policies
-                action_robot = test_agent.compute_action(obs['robot'], policy_id='robot')
-                action_human = test_agent.compute_action(obs['human'], policy_id='human')
+                action_robot = test_agent.compute_single_action(obs['robot'], policy_id='robot')
+                action_human = test_agent.compute_single_action(obs['human'], policy_id='human')
                 # Step the simulation forward using the actions from our trained policies
-                obs, reward, done, truncated, info = env.step({'robot': action_robot, 'human': action_human})
+                obs, reward, done, info = env.step({'robot': action_robot, 'human': action_human})
                 reward = reward['robot']
                 done = done['__all__']
                 info = info['robot']
             else:
-                action = test_agent.compute_action(obs)
-                obs, reward, done, truncated, info = env.step(action)
+                action = test_agent.compute_single_action(obs)
+                obs, reward, done, info = env.step(action)
             reward_total += reward
             force_list.append(info['total_force_on_human'])
             task_success = info['task_success']

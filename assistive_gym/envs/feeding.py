@@ -38,7 +38,7 @@ class FeedingEnv(AssistiveEnv):
 
         done = self.iteration >= 200
         if self.config_bool("stop_on_success"):
-            done = success or done
+            done = bool(success) or done
 
         if not self.human.controllable:
             truncated = (False, ) if self.gym_api_new_step else ()
