@@ -19,6 +19,7 @@ class Agent:
         self.id = id
         self.np_random = np_random
         self.all_joint_indices = list(range(p.getNumJoints(body, physicsClientId=id)))
+        self.all_link_indices = list(range(p.getNumJoints(body, physicsClientId=id)))
         if indices != -1:
             self.update_joint_limits()
             self.enforce_joint_limits(indices)
@@ -39,6 +40,12 @@ class Agent:
             return []
         robot_joint_states = p.getJointStates(self.body, jointIndices=indices, physicsClientId=self.id)
         return np.array([x[0] for x in robot_joint_states])
+
+    def get_link_states_real(self):
+        link_states = []
+        for link in self.all_link_indices:
+            link_states.append(self.get_pos_orient(link, convert_to_realworld=True))
+        return link_states
 
     def get_joint_angles_dict(self, indices=None):
         return {j: a for j, a in zip(indices, self.get_joint_angles(indices))}

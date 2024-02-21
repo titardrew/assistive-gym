@@ -14,7 +14,7 @@ class FeedingEnv(AssistiveEnv):
             action = np.concatenate([action['robot'], action['human']])
         self.take_step(action)
 
-        obs = self._get_obs()
+        obs, verbose_obs = self._get_obs()
 
         reward_food, food_mouth_velocities, food_hit_human_reward = self.get_food_rewards()
 
@@ -34,7 +34,18 @@ class FeedingEnv(AssistiveEnv):
             print('Task success:', self.task_success, 'Food reward:', reward_food)
 
         success = int(self.task_success >= self.total_food_count*self.config('task_success_threshold'))
-        info = {'total_force_on_human': self.total_force_on_human, 'task_success': success, 'action_robot_len': self.action_robot_len, 'action_human_len': self.action_human_len, 'obs_robot_len': self.obs_robot_len, 'obs_human_len': self.obs_human_len}
+        success_percent = float(self.task_success / self.total_food_count*self.config('task_success_threshold'))
+        info = {
+            'total_force_on_human': self.total_force_on_human,
+            'task_success_percent': success_percent,
+            'task_success': success,
+            'action_robot_len': self.action_robot_len,
+            'action_human_len': self.action_human_len,
+            'obs_robot_len': self.obs_robot_len,
+            'obs_human_len': self.obs_human_len,
+            'verbose_obs': verbose_obs,
+            'robot_links': self.robot.get_link_states_real()
+        }
 
         done = self.iteration >= 200
         if self.config_bool("stop_on_success"):
@@ -109,8 +120,17 @@ class FeedingEnv(AssistiveEnv):
         self.robot_force_on_human, self.spoon_force_on_human = self.get_total_force()
         self.total_force_on_human = self.robot_force_on_human + self.spoon_force_on_human
         robot_obs = np.concatenate([spoon_pos_real, spoon_orient_real, spoon_pos_real - target_pos_real, robot_joint_angles, head_pos_real, head_orient_real, [self.spoon_force_on_human]]).ravel()
+        verbose_robot_obs = {
+            'spoon_pos_real': spoon_pos_real,
+            'spoon_orient_real': spoon_orient_real,
+            'spoon_distance': spoon_pos_real - target_pos_real,
+            'robot_joint_angles': robot_joint_angles,
+            'head_pos_real': head_pos_real,
+            'head_orient_real': head_orient_real,
+            'spoon_force_on_human': self.spoon_force_on_human,
+        }
         if agent == 'robot':
-            return robot_obs
+            return robot_obs, verbose_robot_obs
         if self.human.controllable:
             human_joint_angles = self.human.get_joint_angles(self.human.controllable_joint_indices)
             spoon_pos_human, spoon_orient_human = self.human.convert_to_realworld(spoon_pos, spoon_orient)
@@ -118,10 +138,10 @@ class FeedingEnv(AssistiveEnv):
             target_pos_human, _ = self.human.convert_to_realworld(self.target_pos)
             human_obs = np.concatenate([spoon_pos_human, spoon_orient_human, spoon_pos_human - target_pos_human, human_joint_angles, head_pos_human, head_orient_human, [self.robot_force_on_human, self.spoon_force_on_human]]).ravel()
             if agent == 'human':
-                return human_obs
+                return human_obs, {}
             # Co-optimization with both human and robot controllable
-            return {'robot': robot_obs, 'human': human_obs}
-        return robot_obs
+            return {'robot': robot_obs, 'human': human_obs}, {'robot': verbose_robot_obs}
+        return robot_obs, verbose_robot_obs
 
     def reset(self, **kwargs):
         super(FeedingEnv, self).reset()
